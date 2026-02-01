@@ -1,0 +1,67 @@
+# Private/paid AI features & pricing docs (keep proprietary)
+.docs/ai-private/
+.docs/ai-paid/
+.docs/ai-subscription/
+.docs/pricing/
+.docs/billing/
+.docs/lehro/
+.docs/*lehro*
+
+**/pricing-*.md
+**/pricing*.md
+**/billing-*.md
+**/billing*.md
+**/subscription-*.md
+**/subscription*.md
+**/ai-paid-*.md
+**/ai-private-*.md
+**/ai-subscription-*.md
+
+**/lehro-solutions*
+**/LehroSolutions*
+**/*-lehro*
+**/*lehro*
+
+# Local marketing video workspace (do not commit)
+PDFOIDVIDEOS/
+
+# Testing artifacts (unit + e2e)
+test-results/
+test-results*.json
+playwright-report/
+playwright/.cache/
+.playwright/
+coverage/
+
+# Local test/debug outputs
+debug_*.txt
+last_error*.txt
+test_output*.txt
+test_rect*.txt
+test_verbose*.txt
+regression_output*.txt
+final_regression_output*.txt
+
+# Local planning/progress docs (do not publish)
+PROJECT_PLAN.md
+PROGRESS.md
+QUICK_REFERENCE.md
+
+# Feature/roadmap/progress docs (do not publish)
+**/*[Ff]eature*.md
+**/*[Rr]oadmap*.md
+**/*[Pp]rogress*.md
+**/*[Pp]lan*.md
+**/QUICK_REFERENCE.md
+/.docs/_local/
+
+# Build artifacts & dependencies
+node_modules/
+dist/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
