@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  base: process.env.GITHUB_PAGES === 'true' ? '/pdfoid-/' : '/',
+  base: process.env.GITHUB_PAGES === 'true' ? '/pdfoid/' : '/',
   plugins: [react() as any],
   server: {
     port: 5173
