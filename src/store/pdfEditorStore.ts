@@ -188,7 +188,7 @@ const withPdfDocument = async (
     set({
       pdfData: new Uint8Array(saved),
       numPages: doc.getPageCount(),
-      pageSizes: doc.getPages().map((p) => p.getSize()),
+      pageSizes: doc.getPages().map((p: any) => p.getSize()),
       loading: false,
       dirty: true,
       pdfRevision: nextRevision,
@@ -226,7 +226,7 @@ const decodeDataUrl = (dataUrl: string): { mime: string; bytes: Uint8Array } | n
   }
 }
 
-export const usePdfEditorStore = create<PdfEditorState>((set, get) => ({
+export const usePdfEditorStore = create<PdfEditorState>((set: any, get: any) => ({
   fileName: '',
   pdfData: null,
   originalPdfData: null,
