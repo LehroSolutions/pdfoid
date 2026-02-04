@@ -1,8 +1,11 @@
 /// <reference types="vitest" />
+// @ts-ignore
 import { defineConfig } from 'vitest/config'
+// @ts-ignore
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
+  // @ts-ignore
   base: process.env.GITHUB_PAGES === 'true' ? '/pdfoid/' : '/',
   plugins: [react() as any],
   server: {

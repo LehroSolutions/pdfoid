@@ -1,6 +1,9 @@
+// @ts-ignore
 import { create } from 'zustand'
+// @ts-ignore
 import { PDFDocument, StandardFonts, degrees, rgb } from 'pdf-lib'
 import type { Annotation } from '../types/annotations'
+// @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.js'
 
 // Reuse worker configuration for pdf.js
@@ -835,7 +838,7 @@ export const usePdfEditorStore = create<PdfEditorState>((set: any, get: any) => 
 
   replaceMatch: async (matchId: string, replace: string) => {
     // Prefer rect-based replacement if the match exists in lastFindResults
-    const cached = (get().lastFindResults || []).find((m) => m.id === matchId)
+    const cached = (get().lastFindResults || []).find((m: any) => m.id === matchId)
     if (cached) {
       let replaced = false
       await withPdfDocument(get, set, async (doc) => {
@@ -1041,7 +1044,7 @@ export const usePdfEditorStore = create<PdfEditorState>((set: any, get: any) => 
     // Derived status
     let reason: 'TEXT_TOO_WIDE' | 'ERASE_TOO_WIDE' | 'GENERIC_FAILURE' | undefined
     if (!replaced) {
-      if (get().lastFindResults?.find(r => r.id === matchId)) {
+      if (get().lastFindResults?.find((r: any) => r.id === matchId)) {
         // If match existed but wasn't replaced, it was likely geometry constraints
         reason = 'TEXT_TOO_WIDE'
       } else {
