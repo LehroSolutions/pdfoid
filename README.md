@@ -12,7 +12,22 @@ npm run dev
 
 Open the URL shown by Vite (default http://localhost:5173) and try uploading a PDF.
 
-Notes & next steps:
-- This is a minimal demo. The built-in AI is intentionally lightweight and synchronous for clarity. For bigger PDFs, consider moving text extraction and summarization into a Web Worker.
-- No git integration was added per request.
-- Next I'll add a nicer viewer UI, lazy page rendering, and move heavy CPU work into Web Workers.
+## Key Features
+
+- **CV PDF Generator**: Create professional, minimalistic CVs with customizable themes (primary/secondary colors), fonts, and layout spacing. Supports sections for Summary, Experience, Education, Projects, Certifications, and Skills.
+- **Local AI Processing**: Text extraction and summarization runs locally in the browser.
+
+## Quick start (Windows PowerShell):
+
+```powershell
+cd d:\pdfoid
+npm install
+npm run dev
+```
+
+Open the URL shown by Vite (default http://localhost:5173).
+
+## Notes
+
+- This is a demo project showcasing local AI capabilities and PDF manipulation.
+- Future improvements: Enhanced viewer UI, Web Worker offloading for performance.
