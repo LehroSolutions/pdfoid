@@ -5,7 +5,7 @@
 import { create } from 'zustand'
 // @ts-ignore
 import { persist } from 'zustand/middleware'
-import { CVData, CVSettings, defaultCVData, defaultCVSettings } from '../types/cv'
+import { CVData, CVSettings, createEmptyCVData, defaultCVSettings } from '../types/cv'
 
 interface CVStore {
     cvData: CVData
@@ -36,10 +36,32 @@ interface CVStore {
     markClean: () => void
 }
 
+type PersistedCVState = {
+    cvData?: CVData
+    settings?: CVSettings
+}
+
+export const migrateCVStoreState = (
+    persistedState: PersistedCVState | undefined,
+    version: number
+): { cvData: CVData; settings: CVSettings } => {
+    if (!persistedState || version < 2) {
+        return {
+            cvData: createEmptyCVData(),
+            settings: defaultCVSettings,
+        }
+    }
+
+    return {
+        cvData: persistedState.cvData || createEmptyCVData(),
+        settings: persistedState.settings || defaultCVSettings,
+    }
+}
+
 export const useCVStore = create<CVStore>()(
     persist(
         (set, get) => ({
-            cvData: defaultCVData,
+            cvData: createEmptyCVData(),
             settings: defaultCVSettings,
             isDirty: false,
 
@@ -207,7 +229,7 @@ export const useCVStore = create<CVStore>()(
 
             resetToDefault: () =>
                 set({
-                    cvData: defaultCVData,
+                    cvData: createEmptyCVData(),
                     settings: defaultCVSettings,
                     isDirty: false,
                 }),
@@ -223,6 +245,8 @@ export const useCVStore = create<CVStore>()(
         }),
         {
             name: 'pdfoid-cv-storage',
+            version: 2,
+            migrate: (persistedState, version) => migrateCVStoreState(persistedState as PersistedCVState | undefined, version),
             partialize: (state) => ({
                 cvData: state.cvData,
                 settings: state.settings,

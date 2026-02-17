@@ -11,6 +11,17 @@ import { SkipLink } from './components/ui'
 import { useDocumentTitle } from './hooks'
 import { ToastContainer } from './components/ToastContainer'
 import { KeyboardShortcutsHelp } from './components/KeyboardShortcutsHelp'
+import { useCVStore } from './store/cvStore'
+import { downloadCV } from './utils/cvPdfGenerator'
+import { extractCVDataFromPdf, MIN_CV_PARSE_CONFIDENCE, type CVExtractionResult } from './utils/cvExtractor'
+import type { CVTemplate } from './types/cv'
+
+const cvTemplateOptions: Array<{ id: CVTemplate; label: string; hint: string }> = [
+  { id: 'modern', label: 'Modern', hint: 'Contemporary left-panel layout with bold accents' },
+  { id: 'classic', label: 'Classic', hint: 'Centered serif header with elegant editorial spacing' },
+  { id: 'minimal', label: 'Minimal', hint: 'Monochrome single-column focused on readability' },
+  { id: 'creative', label: 'Creative', hint: 'Expressive right-panel design with boxed sections' },
+]
 
 /**
  * Application header component
@@ -54,12 +65,95 @@ type RightSidebarProps = {
   onLoadPDF: (data: ArrayBuffer, name: string) => void
 }
 
-function RightSidebar({
+export function RightSidebar({
   onLoadPDF,
 }: RightSidebarProps) {
+  const { settings, loadCVData, updateSettings } = useCVStore(
+    useShallow((state) => ({
+      settings: state.settings,
+      loadCVData: state.loadCVData,
+      updateSettings: state.updateSettings,
+    }))
+  )
+  const { pdfBytes, isCvDocument, cvDetectionLoading, cvDetection, fileName } = usePdfEditorStore(
+    useShallow((state) => ({
+      pdfBytes: state.pdfData,
+      isCvDocument: state.isCvDocument,
+      cvDetectionLoading: state.cvDetectionLoading,
+      cvDetection: state.cvDetection,
+      fileName: state.fileName,
+    }))
+  )
+  const { success, error } = useUIStore(
+    useShallow((state) => ({
+      success: state.success,
+      error: state.error,
+    }))
+  )
+  const [isExporting, setIsExporting] = useState(false)
+  const [isParsingCv, setIsParsingCv] = useState(false)
+  const [lastParseReport, setLastParseReport] = useState<Pick<
+    CVExtractionResult,
+    'confidence' | 'sectionsDetected' | 'missingSections' | 'warnings' | 'pagesScanned'
+  > | null>(null)
+  const [parseErrorMessage, setParseErrorMessage] = useState<string | null>(null)
+
+  const handleDownloadCV = async () => {
+    if (!pdfBytes) return
+    try {
+      setIsParsingCv(true)
+      setParseErrorMessage(null)
+      const parsed = await extractCVDataFromPdf(pdfBytes, fileName || 'uploaded-cv.pdf')
+      setLastParseReport({
+        confidence: parsed.confidence,
+        sectionsDetected: parsed.sectionsDetected,
+        missingSections: parsed.missingSections,
+        warnings: parsed.warnings,
+        pagesScanned: parsed.pagesScanned,
+      })
+
+      if (parsed.confidence < MIN_CV_PARSE_CONFIDENCE) {
+        const missing = parsed.missingSections.slice(0, 3).join(', ')
+        const failureMessage = missing
+          ? `Unable to parse this CV confidently (score ${parsed.confidence.toFixed(2)}). Missing: ${missing}.`
+          : `Unable to parse this CV confidently (score ${parsed.confidence.toFixed(2)}).`
+        setParseErrorMessage(failureMessage)
+        error(failureMessage)
+        return
+      }
+
+      const sectionLabel = parsed.sectionsDetected.length
+        ? parsed.sectionsDetected.join(', ')
+        : 'none'
+      const warningLine = parsed.warnings.length
+        ? `\nWarnings: ${parsed.warnings.slice(0, 2).join(' | ')}`
+        : ''
+	      const confirmed = window.confirm(
+	        `Import parsed CV data from "${fileName || 'uploaded file'}"?\n\nDetected sections: ${sectionLabel}\nConfidence: ${parsed.confidence.toFixed(2)}${warningLine}\nTemplate: ${settings.template}\n\nThis will replace current CV data.`
+	      )
+	      if (!confirmed) return
+
+      loadCVData(parsed.cvData)
+      setIsExporting(true)
+      const fileBase = parsed.cvData.personalInfo.fullName || 'cv'
+      await downloadCV(parsed.cvData, settings, `${fileBase}-CV.pdf`)
+      success('CV PDF downloaded from imported CV')
+    } catch (err) {
+      console.error('Failed to generate CV PDF', err)
+      setParseErrorMessage('Failed to parse CV data from the uploaded PDF.')
+      error('Failed to parse and generate CV PDF')
+    } finally {
+      setIsParsingCv(false)
+      setIsExporting(false)
+    }
+  }
+
+  const detectedSignals = (cvDetection?.keywords || []).filter((item) => item !== 'filename').slice(0, 3)
+  const showCvCard = Boolean(pdfBytes)
+
   return (
     <aside 
-      className="w-96 bg-[var(--pdfoid-surface)] border-l border-[var(--pdfoid-border)] p-4 flex flex-col gap-4"
+      className="w-96 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin bg-[var(--pdfoid-surface)] border-l border-[var(--pdfoid-border)] p-4 flex flex-col gap-4"
       aria-label="Document tools and analysis"
     >
       {/* Uploader Card */}
@@ -67,6 +161,86 @@ function RightSidebar({
         <h2 className="text-lg font-bold text-[var(--pdfoid-text)] mb-3">Upload Document</h2>
         <PDFUploader onLoadPDF={onLoadPDF} />
       </div>
+
+      {/* CV Export Card */}
+      {showCvCard && (
+        <div className="border border-[var(--pdfoid-border)] rounded-lg p-4 bg-[var(--pdfoid-surface)]">
+          <h2 className="text-lg font-bold text-[var(--pdfoid-text)] mb-2">CV Export</h2>
+          {cvDetectionLoading ? (
+            <p className="text-sm text-[var(--pdfoid-muted)]">Detecting CV content...</p>
+          ) : isCvDocument ? (
+            <>
+              <p className="text-sm text-[var(--pdfoid-muted)] mb-3">
+                CV detected{detectedSignals.length > 0 ? ` (${detectedSignals.join(', ')})` : ''}.
+              </p>
+              <div className="mb-3 rounded-md border border-[var(--pdfoid-border)] bg-[var(--pdfoid-surface-2)] p-2.5">
+                <p className="text-xs font-semibold text-[var(--pdfoid-text)] mb-2">
+                  CV Template
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {cvTemplateOptions.map((option) => {
+                    const active = settings.template === option.id
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        aria-pressed={active}
+                        aria-label={`Use ${option.label} template`}
+                        onClick={() => updateSettings({ template: option.id })}
+                        className={`rounded-md border px-2 py-1.5 text-xs font-semibold transition ${
+                          active
+                            ? 'border-[var(--pdfoid-accent)] bg-[var(--pdfoid-accent-soft)] text-[var(--pdfoid-accent2)]'
+                            : 'border-[var(--pdfoid-border)] bg-[var(--pdfoid-surface)] text-[var(--pdfoid-muted)] hover:text-[var(--pdfoid-text)]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="mt-2 text-[11px] text-[var(--pdfoid-muted)]">
+                  {cvTemplateOptions.find((option) => option.id === settings.template)?.hint}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadCV}
+                disabled={isExporting || isParsingCv}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--pdfoid-accent)] px-4 py-2.5 text-white font-semibold shadow-md hover:shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isParsingCv ? 'Parsing CV...' : isExporting ? 'Generating...' : 'Parse & Download CV PDF'}
+              </button>
+              {lastParseReport && (
+                <div className="mt-3 rounded-md border border-[var(--pdfoid-border)] bg-[var(--pdfoid-surface-2)] p-3">
+                  <p className="text-xs font-semibold text-[var(--pdfoid-text)]">
+                    Parse Report: confidence {lastParseReport.confidence.toFixed(2)} across {lastParseReport.pagesScanned} page{lastParseReport.pagesScanned === 1 ? '' : 's'}
+                  </p>
+                  <p className="mt-1 text-xs text-[var(--pdfoid-muted)]">
+                    Detected: {lastParseReport.sectionsDetected.length ? lastParseReport.sectionsDetected.join(', ') : 'none'}
+                  </p>
+                  {lastParseReport.missingSections.length > 0 && (
+                    <p className="mt-1 text-xs text-[var(--pdfoid-muted)]">
+                      Missing: {lastParseReport.missingSections.join(', ')}
+                    </p>
+                  )}
+                  {lastParseReport.warnings.length > 0 && (
+                    <p className="mt-1 text-xs text-[var(--pdfoid-muted)]">
+                      Warnings: {lastParseReport.warnings.slice(0, 3).join(' | ')}
+                    </p>
+                  )}
+                </div>
+              )}
+              {parseErrorMessage && (
+                <p className="mt-2 text-xs text-red-600">{parseErrorMessage}</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-[var(--pdfoid-muted)]">
+              This document does not look like a CV. Upload a CV to enable export.
+            </p>
+          )}
+        </div>
+      )}
     </aside>
   )
 }
